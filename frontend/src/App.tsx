@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import MapComponent from './components/Map/MapComponent';
 import RouteSearch from './components/RouteSearch/RouteSearch';
 import TransitInfo from './components/TransitInfo/TransitInfo';
 import { transitService } from './services/transitService';
+
+interface MapComponentProps {
+  busMarkers: any[];
+  trainMarkers: any[];
+  routes?: any[];
+}
+
+interface TransitInfoProps {
+  selectedRoute: any;
+}
 
 function App() {
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
@@ -110,29 +121,23 @@ function App() {
   };
 
   return (
-    <div className="App">
-      {isLoading && (
-        <div className="loading-overlay">
-          <div className="loading-spinner">Loading transit data...</div>
-        </div>
-      )}
-      <div className="app-container">
-        <div className="left-panel">
-          <RouteSearch onRouteFound={handleRouteFound} />
-          <TransitInfo selectedRoute={selectedRoute} />
-        </div>
-        <div className="map-panel">
-          <MapComponent 
-            routes={selectedRoute ? [selectedRoute] : []} 
-            busMarkers={busMarkers}
-            trainMarkers={trainMarkers}
-          />
-        </div>
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <RouteSearch onRouteFound={handleRouteFound} />
+              <MapComponent 
+                busMarkers={busMarkers}
+                trainMarkers={trainMarkers}
+                routes={selectedRoute ? [selectedRoute] : []}
+              />
+              {selectedRoute && <TransitInfo selectedRoute={selectedRoute} />}
+            </>
+          } />
+        </Routes>
       </div>
-      <footer className="App-footer">
-        <p>Transit Hacks 2025 - SafeTransit</p>
-      </footer>
-    </div>
+    </Router>
   );
 }
 
