@@ -1,13 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import MapComponent from './components/Map/MapComponent';
 import RouteSearch from './components/RouteSearch/RouteSearch';
 import TransitInfo from './components/TransitInfo/TransitInfo';
+import { transitService } from './services/transitService';
 
 function App() {
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
-  const [busMarkers, _setBusMarkers] = useState<any[]>([]);
-  const [trainMarkers, _setTrainMarkers] = useState<any[]>([]);
+  const [busMarkers, setBusMarkers] = useState<any[]>([]);
+  const [trainMarkers, setTrainMarkers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Fetch real-time vehicle locations
+  useEffect(() => {
+    const fetchVehicleLocations = async () => {
+      setIsLoading(true);
+      try {
+        // Common bus routes in Chicago
+        const busRouteIds = ['22', '6', '147', '151', '8'];
+        const trainRouteIds = ['RED', 'BLUE', 'G', 'BRN'];
+
+        // Fetch bus locations
+        const buses: any[] = [];
+        for (const routeId of busRouteIds) {
+          try {
+            const response = await transitService.getBusVehicles(routeId);
+            if (response.vehicles && response.vehicles.length > 0) {
+              // Transform to map marker format
+              const markers = response.vehicles.map(vehicle => ({
+                id: vehicle.vid,
+                latitude: parseFloat(vehicle.lat),
+                longitude: parseFloat(vehicle.lon),
+                route: vehicle.rt,
+                direction: vehicle.des,
+                delayed: vehicle.dly
+              }));
+              buses.push(...markers);
+            }
+          } catch (err) {
+            console.error(`Error fetching buses for route ${routeId}:`, err);
+          }
+        }
+        
+        // Fetch train locations
+        const trains: any[] = [];
+        for (const routeId of trainRouteIds) {
+          try {
+            const response = await transitService.getTrainLocations(routeId);
+            if (response.locations && response.locations.length > 0) {
+              // Transform to map marker format
+              const markers = response.locations.map(train => ({
+                id: train.rn,
+                latitude: parseFloat(train.lat),
+                longitude: parseFloat(train.lon),
+                line: routeId,
+                destination: train.destNm,
+                nextStation: train.nextStaNm
+              }));
+              trains.push(...markers);
+            }
+          } catch (err) {
+            console.error(`Error fetching trains for route ${routeId}:`, err);
+          }
+        }
+        
+        setBusMarkers(buses);
+        setTrainMarkers(trains);
+      } catch (error) {
+        console.error('Error fetching vehicle locations:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Initial fetch
+    fetchVehicleLocations();
+    
+    // Set up refresh interval (every 30 seconds)
+    const interval = setInterval(fetchVehicleLocations, 30000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
   
   // Handle when a route is found
   const handleRouteFound = (route: any) => {
@@ -37,25 +111,24 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>SafeTransit Chicago</h1>
-      </header>
-      
-      <main className="App-main">
+      {isLoading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner">Loading transit data...</div>
+        </div>
+      )}
+      <div className="app-container">
         <div className="left-panel">
           <RouteSearch onRouteFound={handleRouteFound} />
           <TransitInfo selectedRoute={selectedRoute} />
         </div>
-        
         <div className="map-panel">
           <MapComponent 
-            routes={selectedRoute?.routes || []} 
+            routes={selectedRoute ? [selectedRoute] : []} 
             busMarkers={busMarkers}
             trainMarkers={trainMarkers}
           />
         </div>
-      </main>
-      
+      </div>
       <footer className="App-footer">
         <p>Transit Hacks 2025 - SafeTransit</p>
       </footer>

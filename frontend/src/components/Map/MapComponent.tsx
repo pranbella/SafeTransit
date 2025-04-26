@@ -5,7 +5,10 @@ import './MapComponent.css';
 
 // You'll need to get a Mapbox token
 // Sign up at https://account.mapbox.com/ and create a token
-mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+// To use your token, create a .env file in the frontend directory with:
+// REACT_APP_MAPBOX_TOKEN=your_token_here
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoiZGVtby1hY2NvdW50IiwiYSI6ImNsbHpwZjV2dTFiNXAzcnBlbjRjNmJudWgifQ.GpCcqTs4K1Ot49clROt45w';
+// Note: The fallback token above is a public demo token with limited usage - replace with your own token
 
 interface MapComponentProps {
   center?: [number, number]; // [longitude, latitude]

@@ -17,28 +17,89 @@ const TransitInfo: React.FC<TransitInfoProps> = ({ selectedRoute }) => {
     const fetchTransitData = async () => {
       setLoading(true);
       try {
-        // For now, we'll use mock data until we integrate with the actual API
-        const _busResponse = await transitService.getBusData();
-        const _trainResponse = await transitService.getTrainData();
+        // Fetch real data for common routes
+        const busRouteIds = ['22', '6', '147']; // Clark, Jackson, Outer Drive Express
+        const trainStationId = '40380'; // Clark/Lake
         
-        // In a real implementation, we would use the actual response data
-        // For now, let's use mock data
-        setBusData([
-          { id: '1001', route: '6', direction: 'Northbound', nextStop: 'Jackson', eta: '2 min' },
-          { id: '1002', route: '22', direction: 'Southbound', nextStop: 'Clark/Lake', eta: '5 min' },
-          { id: '1003', route: '147', direction: 'Northbound', nextStop: 'Michigan/Chicago', eta: '8 min' },
-        ]);
+        // Get bus vehicles for specific routes (since predictions aren't available)
+        const busPredictions: any[] = [];
+        for (const routeId of busRouteIds) {
+          try {
+            // Use the bus vehicles API directly now that our service is properly structured
+            const response = await transitService.getBusVehicles(routeId);
+            if (response && response.vehicles && response.vehicles.length > 0) {
+              // Map the API response to our component format
+              const vehicles = response.vehicles.slice(0, 2).map((vehicle) => ({
+                id: vehicle.vid,
+                route: vehicle.rt,
+                direction: vehicle.des,
+                nextStop: 'En Route',
+                eta: vehicle.dly ? 'Delayed' : 'In Service'
+              }));
+              busPredictions.push(...vehicles);
+            }
+          } catch (err) {
+            console.error(`Error fetching vehicles for route ${routeId}:`, err);
+          }
+        }
         
-        setTrainData([
-          { id: '2001', line: 'Red', direction: '95th/Dan Ryan', nextStation: 'Jackson', eta: '3 min' },
-          { id: '2002', line: 'Blue', direction: 'O\'Hare', nextStation: 'Clark/Lake', eta: '7 min' },
-          { id: '2003', line: 'Brown', direction: 'Kimball', nextStation: 'Merchandise Mart', eta: '4 min' },
-        ]);
+        // Get train arrivals for Clark/Lake station
+        const trainArrivals: any[] = [];
+        try {
+          // Use the train arrivals API directly now that our service is properly structured
+          const response = await transitService.getTrainArrivals(trainStationId);
+          if (response && response.arrivals && response.arrivals.length > 0) {
+            // Map the API response to our component format
+            const arrivals = response.arrivals.slice(0, 5).map((arr) => ({
+              id: arr.rn,
+              line: getLineName(arr.rt),
+              direction: arr.destNm,
+              nextStation: arr.staNm,
+              eta: calculateEta(arr.arrT)
+            }));
+            trainArrivals.push(...arrivals);
+          }
+        } catch (err) {
+          console.error('Error fetching train arrivals:', err);
+        }
+        
+        setBusData(busPredictions);
+        setTrainData(trainArrivals);
       } catch (error) {
         console.error('Error fetching transit data:', error);
       } finally {
         setLoading(false);
       }
+    };
+    
+    // Helper function to calculate ETA in minutes
+    const calculateEta = (predictionTime: string): string => {
+      const now = new Date();
+      const predTime = new Date(predictionTime);
+      const diffMinutes = Math.round((predTime.getTime() - now.getTime()) / 60000);
+      
+      if (diffMinutes <= 0) {
+        return 'Due';
+      } else if (diffMinutes === 1) {
+        return '1 min';
+      } else {
+        return `${diffMinutes} mins`;
+      }
+    };
+    
+    // Helper function to convert route code to line name
+    const getLineName = (routeCode: string): string => {
+      const lineMap: {[key: string]: string} = {
+        'RED': 'Red',
+        'BLUE': 'Blue',
+        'G': 'Green',
+        'BRN': 'Brown',
+        'P': 'Purple',
+        'Y': 'Yellow',
+        'PINK': 'Pink',
+        'ORG': 'Orange'
+      };
+      return lineMap[routeCode] || routeCode;
     };
 
     fetchTransitData();
