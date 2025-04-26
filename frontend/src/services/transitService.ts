@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+    ? 'https://Safe-Transit-Chicago.onrender.com/api'
+    : 'http://localhost:3001/api';
 
 // Types for API responses
 export interface BusRoute {
